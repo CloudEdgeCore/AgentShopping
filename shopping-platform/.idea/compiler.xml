@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <annotationProcessing>
+      <profile name="Annotation profile for shopping-platform" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="false">
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.34/lombok-1.18.34.jar" />
+          <entry name="$MAVEN_REPOSITORY$/org/mapstruct/mapstruct-processor/1.6.3/mapstruct-processor-1.6.3.jar" />
+        </processorPath>
+        <module name="platform-product" />
+        <module name="platform-order" />
+        <module name="platform-seckill" />
+        <module name="platform-payment" />
+        <module name="platform-infrastructure" />
+        <module name="platform-inventory" />
+        <module name="platform-cart" />
+        <module name="platform-app" />
+        <module name="platform-marketing" />
+        <module name="platform-user" />
+        <module name="platform-search" />
+        <module name="platform-security" />
+        <module name="platform-job" />
+        <module name="platform-common" />
+      </profile>
+    </annotationProcessing>
+  </component>
+  <component name="JavacSettings">
+    <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="platform-app" options="-parameters" />
+      <module name="platform-cart" options="-parameters" />
+      <module name="platform-common" options="-parameters" />
+      <module name="platform-infrastructure" options="-parameters" />
+      <module name="platform-inventory" options="-parameters" />
+      <module name="platform-job" options="-parameters" />
+      <module name="platform-marketing" options="-parameters" />
+      <module name="platform-order" options="-parameters" />
+      <module name="platform-payment" options="-parameters" />
+      <module name="platform-product" options="-parameters" />
+      <module name="platform-search" options="-parameters" />
+      <module name="platform-seckill" options="-parameters" />
+      <module name="platform-security" options="-parameters" />
+      <module name="platform-user" options="-parameters" />
+    </option>
+  </component>
+</project>

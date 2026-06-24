@@ -1,0 +1,95 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.4.11</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.cloudedge</groupId>
+    <artifactId>shopping-platform</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <name>shopping-platform</name>
+    <description>Shopping platform multi-module project</description>
+
+    <modules>
+        <module>platform-app</module>
+        <module>platform-common</module>
+        <module>platform-security</module>
+        <module>platform-infrastructure</module>
+        <module>platform-user</module>
+        <module>platform-product</module>
+        <module>platform-search</module>
+        <module>platform-cart</module>
+        <module>platform-order</module>
+        <module>platform-inventory</module>
+        <module>platform-marketing</module>
+        <module>platform-seckill</module>
+        <module>platform-payment</module>
+        <module>platform-job</module>
+    </modules>
+
+    <properties>
+        <java.version>17</java.version>
+        <maven.compiler.release>17</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <lombok.version>1.18.34</lombok.version>
+        <mapstruct.version>1.6.3</mapstruct.version>
+        <mybatis-plus.version>3.5.10.1</mybatis-plus.version>
+        <springdoc.version>2.7.0</springdoc.version>
+        <minio.version>8.5.17</minio.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>${lombok.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <!-- 统一编译配置 -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <configuration>
+                        <release>${maven.compiler.release}</release>
+                        <parameters>true</parameters>
+                        <annotationProcessorPaths>
+                            <path>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok</artifactId>
+                                <version>${lombok.version}</version>
+                            </path>
+                            <path>
+                                <groupId>org.mapstruct</groupId>
+                                <artifactId>mapstruct-processor</artifactId>
+                                <version>${mapstruct.version}</version>
+                            </path>
+                        </annotationProcessorPaths>
+                    </configuration>
+                </plugin>
+
+                <!-- Spring Boot 打包插件 -->
+                <plugin>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-maven-plugin</artifactId>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+
+</project>

@@ -1,0 +1,58 @@
+{
+  "description": "Normalize shopping platform application logs",
+  "processors": [
+    {
+      "set": {
+        "field": "event.module",
+        "value": "shopping-platform"
+      }
+    },
+    {
+      "set": {
+        "field": "event.dataset",
+        "value": "shopping-platform.application"
+      }
+    },
+    {
+      "set": {
+        "field": "observer.type",
+        "value": "filebeat"
+      }
+    },
+    {
+      "convert": {
+        "field": "status",
+        "type": "integer",
+        "ignore_missing": true
+      }
+    },
+    {
+      "convert": {
+        "field": "durationMs",
+        "type": "long",
+        "ignore_missing": true
+      }
+    },
+    {
+      "rename": {
+        "field": "stackTrace",
+        "target_field": "error.stack_trace",
+        "ignore_missing": true
+      }
+    },
+    {
+      "set": {
+        "field": "event.outcome",
+        "value": "failure",
+        "if": "ctx.level != null && ctx.level == 'ERROR'"
+      }
+    },
+    {
+      "set": {
+        "field": "event.outcome",
+        "value": "success",
+        "if": "ctx.event == null || ctx.event.outcome == null"
+      }
+    }
+  ]
+}

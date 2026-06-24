@@ -1,0 +1,63 @@
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.14.3
+    container_name: shopping-observability-es
+    restart: unless-stopped
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "true"
+      xpack.security.http.ssl.enabled: "false"
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
+      ES_JAVA_OPTS: -Xms1g -Xmx1g
+    ports:
+      - "9201:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+
+  setup:
+    image: curlimages/curl:8.7.1
+    container_name: shopping-observability-setup
+    depends_on:
+      - elasticsearch
+      - kibana
+    environment:
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
+    volumes:
+      - ./elasticsearch:/assets:ro
+    entrypoint: ["/bin/sh", "/assets/setup.sh"]
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.14.3
+    container_name: shopping-observability-kibana
+    restart: unless-stopped
+    depends_on:
+      - elasticsearch
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+      ELASTICSEARCH_USERNAME: elastic
+      ELASTICSEARCH_PASSWORD: ${ELASTIC_PASSWORD}
+      I18N_LOCALE: zh-CN
+    ports:
+      - "5601:5601"
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.14.3
+    container_name: shopping-observability-filebeat
+    restart: unless-stopped
+    user: root
+    depends_on:
+      elasticsearch:
+        condition: service_started
+      kibana:
+        condition: service_started
+      setup:
+        condition: service_completed_successfully
+    command: ["--strict.perms=false"]
+    environment:
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
+    volumes:
+      - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - ${APP_LOG_DIR:-../runtime-logs}:/var/log/shopping-platform:ro
+
+volumes:
+  es_data:

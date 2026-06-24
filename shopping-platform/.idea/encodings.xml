@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="Encoding">
+    <file url="file://$PROJECT_DIR$/backend/platform-app/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend/platform-cart/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend/platform-common/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend/platform-infrastructure/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend/platform-inventory/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend/platform-job/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend/platform-marketing/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend/platform-order/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend/platform-payment/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend/platform-product/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend/platform-search/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend/platform-seckill/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend/platform-security/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend/platform-user/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend/src/main/resources" charset="UTF-8" />
+  </component>
+</project>

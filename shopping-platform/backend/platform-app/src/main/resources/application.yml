@@ -1,0 +1,66 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: shopping-platform-app
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/shopping?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: root
+    password: 123456
+  elasticsearch:
+    uris: http://127.0.0.1:9200
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+      password: 123456
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,loggers
+
+
+platform:
+  logging:
+    environment: ${PLATFORM_LOG_ENV:local}
+    file-path: ${PLATFORM_LOG_PATH:${user.dir}/runtime-logs}
+    trace:
+      enabled: true
+      request-header: X-Trace-Id
+      response-header-enabled: true
+    access:
+      enabled: true
+      slow-threshold-ms: 1500
+      exclude-paths:
+        - /actuator/health
+        - /favicon.ico
+  search:
+    enabled: true
+  security:
+    secret-key: "cloudedge-shopping-platform-jwt-secret-2026"
+    token-prefix: "Bearer "
+    access-token-validity-seconds: 7200
+    permit-all-urls:
+      - /auth/login
+      - /auth/register
+      - /product/**
+      - /search/**
+      - /marketing/flash-sale/**
+      - /actuator/health
+      - /error
+      - /doc.html
+      - /swagger-ui/**
+      - /v3/api-docs/**
