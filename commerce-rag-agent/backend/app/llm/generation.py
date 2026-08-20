@@ -318,7 +318,13 @@ def _build_default_client() -> ChatClient:
 def _has_provider_key() -> bool:
     if not _env_bool("LLM_ENABLED", True):
         return False
-    return bool(os.getenv("DOUBAO_API_KEY") or os.getenv("ARK_API_KEY"))
+    return bool(
+        os.getenv("LLM_BASE_URL")
+        or os.getenv("DOUBAO_BASE_URL")
+        or os.getenv("LLM_API_KEY")
+        or os.getenv("DOUBAO_API_KEY")
+        or os.getenv("ARK_API_KEY")
+    )
 
 
 def _env_bool(name: str, default: bool) -> bool:
@@ -343,8 +349,8 @@ def _client_provider(client: ChatClient | None) -> str:
 
 def _client_model(client: ChatClient | None) -> str:
     if client is None:
-        return os.getenv("DOUBAO_MODEL", "")
-    return str(getattr(client, "model", "") or os.getenv("DOUBAO_MODEL", ""))
+        return os.getenv("LLM_MODEL") or os.getenv("DOUBAO_MODEL") or ""
+    return str(getattr(client, "model", "") or os.getenv("LLM_MODEL") or os.getenv("DOUBAO_MODEL") or "")
 
 
 def _estimate_cost(messages: list[dict[str, str]], output: str) -> dict[str, float | int | str]:

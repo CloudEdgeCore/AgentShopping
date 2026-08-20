@@ -24,7 +24,7 @@ from app.api.sessions import router as sessions_router
 from app.api.upload import router as upload_router
 from app.api.voice import router as voice_router
 from app.api.security import create_auth_router
-from app.models.db import get_db
+from app.models.db import get_db, init_db
 from app.services.image_service import DATA_DIR, ensure_image_dirs
 from app.services.rate_limit_service import exempt_path, limiter, rate_limit_enabled, rate_limit_per_minute
 from app.services.request_context import get_elapsed_ms, get_request_id, start_request
@@ -33,6 +33,7 @@ from app.services.runtime_config_service import runtime_health
 
 def create_app() -> FastAPI:
     load_dotenv(Path(__file__).resolve().parents[1] / ".env")
+    init_db()
     api = FastAPI(title="Commerce RAG Agent", version="0.1.0")
     ensure_image_dirs()
     api.mount("/static", StaticFiles(directory=DATA_DIR), name="static")

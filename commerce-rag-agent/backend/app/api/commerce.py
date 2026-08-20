@@ -241,7 +241,7 @@ async def payment_callback(
 def _verify_payment_signature(raw_body: bytes, signature: str | None, timestamp: str | None) -> None:
     secret = os.getenv("PAYMENT_WEBHOOK_SECRET", "").strip()
     if not secret:
-        return
+        raise HTTPException(status_code=503, detail="payment webhook secret is not configured")
     supplied = (signature or "").strip()
     if supplied.startswith("sha256="):
         supplied = supplied[7:]

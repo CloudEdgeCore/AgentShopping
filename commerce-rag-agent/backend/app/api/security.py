@@ -6,6 +6,7 @@ import time
 from dataclasses import dataclass
 from typing import Any
 
+import bcrypt
 import jwt
 import redis
 from fastapi import Header, HTTPException
@@ -282,7 +283,7 @@ def _auth_required() -> bool:
 
 
 def _trusted_auth_header_enabled() -> bool:
-    return _env_bool("TRUSTED_AUTH_HEADER_ENABLED", not _is_production())
+    return _env_bool("TRUSTED_AUTH_HEADER_ENABLED", False)
 
 
 def _trusted_auth_header_signature_valid(
@@ -323,7 +324,7 @@ def _dev_auto_roles() -> tuple[str, ...]:
 
 
 def _dev_auto_login_enabled() -> bool:
-    return (not _is_production()) and _env_bool("DEV_AUTO_LOGIN_ENABLED", True)
+    return (not _is_production()) and _env_bool("DEV_AUTO_LOGIN_ENABLED", False)
 
 
 def _is_production() -> bool:
@@ -350,12 +351,20 @@ def create_auth_router():
     from fastapi import APIRouter, Request
     from fastapi.responses import JSONResponse
     import jwt as pyjwt
-    import hashlib
 
     router = APIRouter(prefix="/api/auth", tags=["auth"])
 
     def _hash_password(password: str) -> str:
-        return hashlib.sha256(password.encode()).hexdigest()
+        return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+    def _verify_password(password: str, stored: str) -> bool:
+        # bcrypt 哈希（新用户）；兼容历史 sha256 十六进制哈希（旧用户）
+        if stored.startswith("$2"):
+            try:
+                return bcrypt.checkpw(password.encode("utf-8"), stored.encode("utf-8"))
+            except ValueError:
+                return False
+        return hmac.compare_digest(hashlib.sha256(password.encode("utf-8")).hexdigest(), stored)
 
     def _make_token(user) -> str:
         now = int(time.time())
@@ -395,10 +404,14 @@ def create_auth_router():
             return JSONResponse(status_code=400, content={"code": "40000", "success": False, "message": "用户名和密码不能为空"})
         with SessionLocal() as db:
             user = db.query(User).filter(User.username == username, User.deleted == 0).first()
-            if not user or user.password != _hash_password(password):
+            if not user or not _verify_password(password, user.password):
                 return JSONResponse(status_code=401, content={"code": "40100", "success": False, "message": "用户名或密码错误"})
             if user.status == 0:
                 return JSONResponse(status_code=403, content={"code": "40300", "success": False, "message": "账号已被禁用"})
+            # 历史 sha256 哈希自动升级为 bcrypt
+            if not user.password.startswith("$2"):
+                user.password = _hash_password(password)
+                db.commit()
             token = _make_token(user)
             return {"code": "00000", "message": "操作成功", "success": True, "data": {"accessToken": token, "tokenType": "Bearer", "expiresIn": 7200, "userInfo": _user_info(user)}}
 

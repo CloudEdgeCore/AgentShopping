@@ -9,6 +9,7 @@ from app.models.tables import Product
 from app.retrieval.reranker import rerank_image_candidates
 from app.services.image_search_service import ImageSearchService
 from app.services.product_search_service import ProductSearchService
+from app.services.rerank_service import get_rerank_client
 from app.services.taxonomy import product_matches_category, product_matches_subcategory
 
 
@@ -220,17 +221,21 @@ class RetrievalOrchestrator:
             enforce_budget=not relaxed_budget,
             enforce_taxonomy=taxonomy_mode == "hard",
         )
+        products, rerank_trace = self._apply_model_rerank(products, fusion_query or query, mem, {})
+        trace = {**trace, **rerank_trace}
         product_by_id = {product.id: product for product in products}
 
+        item_by_product_id = {
+            _hit_product_id(item): item
+            for item in ranked[:result_limit]
+            if _hit_product_id(item)
+        }
         image_products: list[dict[str, Any]] = []
 
-        for item in ranked[:result_limit]:
-            product_id = _hit_product_id(item)
-            product = product_by_id.get(product_id) if product_id else None
-
-            if not product:
+        for product in products[:result_limit]:
+            item = item_by_product_id.get(product.id)
+            if not item:
                 continue
-
             image_products.append(_image_product_payload(product, item))
 
         return RetrievalResult(
@@ -362,17 +367,21 @@ class RetrievalOrchestrator:
             enforce_budget=not relaxed_budget,
             enforce_taxonomy=taxonomy_mode == "hard",
         )
+        products, rerank_trace = self._apply_model_rerank(products, query, mem, {})
+        trace = {**trace, **rerank_trace}
         product_by_id = {product.id: product for product in products}
 
+        item_by_product_id = {
+            _hit_product_id(item): item
+            for item in ranked[:result_limit]
+            if _hit_product_id(item)
+        }
         image_products: list[dict[str, Any]] = []
 
-        for item in ranked[:result_limit]:
-            product_id = _hit_product_id(item)
-            product = product_by_id.get(product_id) if product_id else None
-
-            if not product:
+        for product in products[:result_limit]:
+            item = item_by_product_id.get(product.id)
+            if not item:
                 continue
-
             image_products.append(_image_product_payload(product, item))
 
         return RetrievalResult(
@@ -421,6 +430,7 @@ class RetrievalOrchestrator:
                 candidates,
                 memory=memory,
             )
+            ranked, trace = self._apply_model_rerank(ranked, query, memory, trace)
             return RetrievalResult(products=ranked, trace=trace)
 
         ranked, trace = self.product_search.hybrid_search(
@@ -429,9 +439,47 @@ class RetrievalOrchestrator:
             [],
             memory=memory,
         )
+        ranked, trace = self._apply_model_rerank(ranked, query, memory, trace)
         return RetrievalResult(products=ranked, trace=trace)
 
     # ── 工具 ──────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _apply_model_rerank(
+        products: list[Product],
+        query: str,
+        memory: dict[str, Any] | None,
+        trace: dict[str, Any],
+    ) -> tuple[list[Product], dict[str, Any]]:
+        """使用外部重排模型（bge-reranker-v2-m3）对候选商品做二次精排。
+
+        未配置 / 请求失败时保持原顺序并记录 trace（不影响主流程）。
+        """
+        client = get_rerank_client()
+        if client is None or len(products) < 2:
+            return products, trace
+        documents = [_product_rerank_text(product) for product in products]
+        try:
+            hits = client.rerank(query or "", documents)
+            score_by_index = {hit.index: hit.score for hit in hits}
+            ranked = sorted(
+                products,
+                key=lambda product: -score_by_index.get(products.index(product), 0.0),
+            )
+            trace["reranker"] = {
+                "enabled": True,
+                "model": client.model,
+                "hits": len(hits),
+                "top_score": round(hits[0].score, 4) if hits else 0.0,
+            }
+            return ranked, trace
+        except Exception as exc:  # 重排失败不影响检索结果
+            trace["reranker"] = {
+                "enabled": True,
+                "model": client.model,
+                "error": f"{type(exc).__name__}: {str(exc)[:160]}",
+            }
+            return products, trace
 
     @staticmethod
     def _load_products(db: Session, product_ids: list[str], *, in_stock_only: bool = False) -> list[Product]:
@@ -458,6 +506,18 @@ class RetrievalOrchestrator:
 def _hit_product_id(item: dict[str, Any]) -> str | None:
     """兼容 reranker 返回顶层 product_id 或 metadata.product_id。"""
     return item.get("product_id") or item.get("metadata", {}).get("product_id")
+
+
+def _product_rerank_text(product: Product) -> str:
+    parts = [
+        product.title,
+        product.category,
+        product.subcategory or "",
+        product.brand,
+        product.description or "",
+    ]
+    text = " ".join(str(part) for part in parts if str(part or "").strip()).strip()
+    return text[:400]
 
 
 def _apply_hard_filters(

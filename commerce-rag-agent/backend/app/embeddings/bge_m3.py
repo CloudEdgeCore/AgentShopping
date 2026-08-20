@@ -3,7 +3,7 @@ from typing import Any, Protocol
 
 from dotenv import load_dotenv
 
-from app.embeddings.cloud_embeddings import ArkEmbeddingClient
+from app.embeddings.cloud_embeddings import ArkEmbeddingClient, OpenAIEmbeddingClient
 
 
 DEFAULT_BGE_M3_MODEL = "BAAI/bge-m3"
@@ -28,6 +28,7 @@ class BgeM3Embedding:
     Supported providers:
     - ``bge_m3`` / ``local``: local FlagEmbedding BGEM3FlagModel.
     - ``volcengine`` / ``ark`` / ``cloud``: Ark embedding fallback.
+    - ``qwen`` / ``openai``: OpenAI-compatible text embedding service (e.g. Qwen3-Embedding-8B).
     """
 
     def __init__(
@@ -60,6 +61,8 @@ class BgeM3Embedding:
             )
         elif resolved_provider == "volcengine":
             self.backend = ArkTextEmbeddingBackend(dimension=dimension)
+        elif resolved_provider == "qwen":
+            self.backend = OpenAITextEmbeddingBackend()
         else:
             raise ValueError(f"Unsupported text embedding provider: {resolved_provider}")
 
@@ -74,10 +77,11 @@ class BgeM3Embedding:
         return self.backend.embed_documents(texts)
 
     def signature(self) -> dict[str, str | int]:
+        # 维度动态读取后端（首次嵌入后可推断实际维度）
         return {
-            "provider": self.provider,
-            "model": self.model_name,
-            "dimension": self.dimension,
+            "provider": self.backend.provider,
+            "model": self.backend.model_name,
+            "dimension": self.backend.dimension,
         }
 
 
@@ -94,6 +98,30 @@ class ArkTextEmbeddingBackend:
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         return self.client.embed_texts(texts)
+
+
+class OpenAITextEmbeddingBackend:
+    provider = "qwen"
+
+    def __init__(self) -> None:
+        self.client = OpenAIEmbeddingClient()
+        self.model_name = self.client.model
+        self.dimension = int(os.getenv("TEXT_EMBEDDING_DIMENSION", "0") or 0)
+
+    def embed_query(self, text: str) -> list[float]:
+        vector = self.client.embed_text(text)
+        self._sync_dimension(vector)
+        return vector
+
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        vectors = self.client.embed_texts(texts)
+        if vectors:
+            self._sync_dimension(vectors[0])
+        return vectors
+
+    def _sync_dimension(self, vector: list[float]) -> None:
+        if self.dimension <= 0 and vector:
+            self.dimension = len(vector)
 
 
 class LocalBgeM3Backend:
@@ -242,6 +270,8 @@ def _normalize_provider(provider: str) -> str:
         return "bge_m3"
     if normalized in {"volcengine", "ark", "cloud", "doubao"}:
         return "volcengine"
+    if normalized in {"qwen", "openai", "openai-compatible", "openai_compatible", "vllm", "xinferece", "xinference"}:
+        return "qwen"
     return normalized
 
 

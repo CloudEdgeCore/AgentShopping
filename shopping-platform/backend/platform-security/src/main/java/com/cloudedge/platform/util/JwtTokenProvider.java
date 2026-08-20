@@ -79,12 +79,16 @@ public class JwtTokenProvider {
         List<?> rawPermissions = claims.get(CLAIM_PERMISSIONS, List.class);
         List<String> permissions = rawPermissions == null ? Collections.emptyList() : rawPermissions.stream()
                 .map(String::valueOf).toList();
+        List<?> rawRoles = claims.get(CLAIM_ROLES, List.class);
+        List<String> roles = rawRoles == null ? Collections.emptyList() : rawRoles.stream()
+                .map(String::valueOf).toList();
 
         Number userTypeNumber = claims.get(CLAIM_USER_TYPE, Number.class);
         return LoginUser.builder()
                 .userId(Long.valueOf(claims.getSubject()))
                 .userName(claims.get(CLAIM_USERNAME, String.class))
                 .userType(userTypeNumber == null ? null : userTypeNumber.intValue())
+                .roles(roles)
                 .permissions(permissions)
                 .build();
     }

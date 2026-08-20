@@ -33,6 +33,9 @@ DEFAULT_FAQS = [
 
 
 class TextIndex:
+    # 进程级 FAQ 索引指纹缓存（避免重复嵌入重建）
+    _faq_fingerprint_cache: str | None = None
+
     def __init__(
         self,
         *,
@@ -113,6 +116,10 @@ class TextIndex:
 
     def index_faqs(self, faqs: list[dict[str, Any]] | None = None) -> None:
         rows = faqs or DEFAULT_FAQS
+        fingerprint = faqs_fingerprint(rows)
+        # 进程级缓存：FAQ 数据与指纹未变化时跳过重新嵌入
+        if TextIndex._faq_fingerprint_cache == fingerprint:
+            return
         expected_metadata = self._faq_collection_metadata(rows)
         self._ensure_collection_ready(FAQ_COLLECTION, self.faq_collection, len(rows), expected_metadata)
         self._upsert(
@@ -122,6 +129,7 @@ class TextIndex:
             [row["metadata"] for row in rows],
         )
         self._set_collection_metadata(self.faq_collection, expected_metadata)
+        TextIndex._faq_fingerprint_cache = fingerprint
 
     def rebuild_faqs(self, faqs: list[dict[str, Any]] | None = None) -> None:
         self._reset_collection(FAQ_COLLECTION)

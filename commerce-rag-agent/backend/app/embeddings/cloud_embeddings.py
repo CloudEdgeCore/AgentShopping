@@ -12,6 +12,89 @@ class ArkEmbeddingError(RuntimeError):
     pass
 
 
+class OpenAIEmbeddingClient:
+    """OpenAI 兼容文本嵌入客户端（vLLM / Xinference 等自建服务）。
+
+    配置：
+    - TEXT_EMBEDDING_BASE_URL：服务地址，如 http://host:8001（自动补 /v1）或 http://host:8001/v1
+    - TEXT_EMBEDDING_MODEL：模型名，如 Qwen3-Embedding-8B
+    - TEXT_EMBEDDING_API_KEY：可选，内网服务免鉴权时留空
+    """
+
+    def __init__(self) -> None:
+        load_dotenv()
+
+        self.api_key = os.getenv("TEXT_EMBEDDING_API_KEY") or os.getenv("LLM_API_KEY") or ""
+        self.base_url = os.getenv("TEXT_EMBEDDING_BASE_URL", "").rstrip("/")
+        self.model = os.getenv("TEXT_EMBEDDING_MODEL", "").strip()
+        self.timeout = int(os.getenv("TEXT_EMBEDDING_TIMEOUT_SECONDS", "60"))
+        self.encoding_format = os.getenv("TEXT_EMBEDDING_ENCODING_FORMAT", "float")
+        if not self.base_url:
+            raise ArkEmbeddingError("Missing TEXT_EMBEDDING_BASE_URL in .env")
+        if not self.model:
+            raise ArkEmbeddingError("Missing TEXT_EMBEDDING_MODEL in .env")
+
+    def embed_text(self, text: str) -> list[float]:
+        text = (text or "").strip()
+        if not text:
+            raise ValueError("text must not be empty")
+        return self.embed_texts([text])[0]
+
+    def embed_texts(self, texts: list[str]) -> list[list[float]]:
+        if not texts:
+            return []
+        payload = {
+            "model": self.model,
+            "input": [(text or "").strip() or " " for text in texts],
+            "encoding_format": self.encoding_format,
+        }
+        data = self._post_json(self._endpoint("embeddings"), payload)
+        return self._extract_openai_embeddings(data)
+
+    def _endpoint(self, path: str) -> str:
+        # 兼容 base 带 /v1 与不带 /v1 两种写法
+        if self.base_url.endswith("/v1"):
+            return f"{self.base_url}/{path}"
+        return f"{self.base_url}/v1/{path}"
+
+    def _post_json(self, url: str, payload: dict[str, Any]) -> dict[str, Any]:
+        headers = {"Content-Type": "application/json"}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+        try:
+            response = requests.post(url, headers=headers, json=payload, timeout=self.timeout)
+        except requests.RequestException as error:
+            raise ArkEmbeddingError(f"OpenAI embedding request failed: {error}") from error
+        if response.status_code >= 400:
+            raise ArkEmbeddingError(
+                f"OpenAI embedding API error {response.status_code}: {response.text[:1000]}"
+            )
+        try:
+            return response.json()
+        except ValueError as error:
+            raise ArkEmbeddingError(
+                f"OpenAI embedding API returned non-JSON response: {response.text[:1000]}"
+            ) from error
+
+    @staticmethod
+    def _extract_openai_embeddings(data: dict[str, Any]) -> list[list[float]]:
+        items = data.get("data")
+        if not isinstance(items, list) or not items:
+            raise ArkEmbeddingError(f"Cannot find embedding vector in response: {str(data)[:1000]}")
+        vectors: list[tuple[int, list[float]]] = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            vector = item.get("embedding")
+            if vector is None or not isinstance(vector, list):
+                continue
+            vectors.append((int(item.get("index", len(vectors))), [float(value) for value in vector]))
+        if not vectors:
+            raise ArkEmbeddingError(f"Cannot find embedding vector in response: {str(data)[:1000]}")
+        vectors.sort(key=lambda pair: pair[0])
+        return [vector for _, vector in vectors]
+
+
 class ArkEmbeddingClient:
     """Volcengine Ark multimodal embedding client."""
 

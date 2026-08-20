@@ -759,7 +759,7 @@ public class OrderServiceImpl implements OrderService {
     private String generateOrderNo() {
         return "ORD"
                 + LocalDateTime.now().format(ORDER_NO_FORMATTER)
-                + ThreadLocalRandom.current().nextInt(1000, 9999);
+                + ThreadLocalRandom.current().nextInt(100000, 1000000);
     }
 
     private List<Long> normalizeCartItemIds(List<Long> cartItemIds) {

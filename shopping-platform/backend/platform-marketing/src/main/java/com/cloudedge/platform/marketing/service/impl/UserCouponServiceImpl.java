@@ -13,6 +13,7 @@ import com.cloudedge.platform.marketing.exception.MarketingErrorCode;
 import com.cloudedge.platform.marketing.mapper.CouponTemplateMapper;
 import com.cloudedge.platform.marketing.mapper.UserCouponMapper;
 import com.cloudedge.platform.marketing.model.dto.UserCouponPageQueryRequest;
+import com.cloudedge.platform.marketing.model.vo.AvailableCouponResponse;
 import com.cloudedge.platform.marketing.model.vo.PageResponse;
 import com.cloudedge.platform.marketing.model.vo.UserCouponResponse;
 import com.cloudedge.platform.marketing.service.UserCouponService;
@@ -24,7 +25,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.Collectors;
 
 @Service
 public class UserCouponServiceImpl implements UserCouponService {
@@ -118,8 +123,60 @@ public class UserCouponServiceImpl implements UserCouponService {
                 .build();
     }
 
+    @Override
+    public List<AvailableCouponResponse> listAvailableCoupons() {
+        Long userId = requireCurrentUserId();
+        LocalDateTime now = LocalDateTime.now();
+
+        List<CouponTemplateDO> templateList = couponTemplateMapper.selectList(Wrappers.<CouponTemplateDO>lambdaQuery()
+                .eq(CouponTemplateDO::getStatus, CouponTemplateStatusEnum.ENABLED.getCode())
+                .le(CouponTemplateDO::getReceiveStartTime, now)
+                .ge(CouponTemplateDO::getReceiveEndTime, now)
+                .orderByDesc(CouponTemplateDO::getId));
+        if (templateList.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Long> templateIds = templateList.stream().map(CouponTemplateDO::getId).toList();
+        Map<Long, Long> userClaimedMap = userCouponMapper.selectList(Wrappers.<UserCouponDO>lambdaQuery()
+                        .eq(UserCouponDO::getUserId, userId)
+                        .in(UserCouponDO::getTemplateId, templateIds))
+                .stream()
+                .collect(Collectors.groupingBy(UserCouponDO::getTemplateId, Collectors.counting()));
+
+        return templateList.stream().map(template -> {
+            long userClaimed = userClaimedMap.getOrDefault(template.getId(), 0L);
+            int claimedCount = template.getClaimedCount() == null ? 0 : template.getClaimedCount();
+            int totalCount = template.getTotalCount() == null ? 0 : template.getTotalCount();
+            return AvailableCouponResponse.builder()
+                    .id(template.getId())
+                    .name(template.getName())
+                    .couponType(template.getCouponType())
+                    .thresholdAmount(template.getThresholdAmount())
+                    .discountAmount(template.getDiscountAmount())
+                    .discountRate(template.getDiscountRate())
+                    .scopeType(template.getScopeType())
+                    .totalCount(totalCount)
+                    .claimedCount(claimedCount)
+                    .remainCount(Math.max(0, totalCount - claimedCount))
+                    .perUserLimit(template.getPerUserLimit())
+                    .userClaimedCount((int) userClaimed)
+                    .receiveStartTime(template.getReceiveStartTime())
+                    .receiveEndTime(template.getReceiveEndTime())
+                    .validFrom(template.getValidFrom())
+                    .validTo(template.getValidTo())
+                    .description(template.getDescription())
+                    .status(template.getStatus())
+                    .build();
+        }).toList();
+    }
+
     private CouponTemplateDO getReceivableTemplateOrThrow(Long templateId) {
-        CouponTemplateDO templateDO = couponTemplateMapper.selectById(templateId);
+        // FOR UPDATE 行锁：同一模板的并发领取在事务内串行化，
+        // 保证事务内 userClaimedCount 与 perUserLimit 校验准确（Redis 降级时的 DB 兜底）
+        CouponTemplateDO templateDO = couponTemplateMapper.selectOne(Wrappers.<CouponTemplateDO>lambdaQuery()
+                .eq(CouponTemplateDO::getId, templateId)
+                .last("for update"));
         if (templateDO == null) {
             throw new BizException(MarketingErrorCode.COUPON_TEMPLATE_NOT_FOUND);
         }

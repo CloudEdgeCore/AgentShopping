@@ -94,16 +94,41 @@ public class ProductSearchIndexerService {
             deleteBySpuId(spuId);
             return;
         }
-        saveBatch(List.of(spuDO));
-        refreshIndex();
+        retryOnFailure(() -> {
+            saveBatch(List.of(spuDO));
+            refreshIndex();
+        });
     }
 
     public void deleteBySpuId(Long spuId) {
         if (spuId == null) {
             return;
         }
-        elasticsearchOperations.delete(String.valueOf(spuId), ProductSearchDocument.class);
-        refreshIndex();
+        retryOnFailure(() -> {
+            elasticsearchOperations.delete(String.valueOf(spuId), ProductSearchDocument.class);
+            refreshIndex();
+        });
+    }
+
+    private void retryOnFailure(Runnable action) {
+        RuntimeException lastError = null;
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            try {
+                action.run();
+                return;
+            } catch (RuntimeException ex) {
+                lastError = ex;
+                if (attempt < 3) {
+                    try {
+                        Thread.sleep(500L * attempt);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            }
+        }
+        throw new RuntimeException("ES sync failed after 3 attempts", lastError);
     }
 
     private void saveBatch(List<ProductSpuDO> spuList) {

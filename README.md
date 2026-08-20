@@ -83,7 +83,6 @@ AI 驱动的智能电商平台 —— 将传统电商交易引擎与 RAG 对话�
 | ChromaDB | 0.5+ |
 | FlagEmbedding (BGE-M3) | 1.3+ |
 | Chinese-CLIP (可选) | PyTorch 2.2+ |
-| Vue 3 + Tailwind CSS | 调试 UI |
 
 **LangGraph 意图路由：**
 
@@ -170,7 +169,6 @@ cp backend/.env.example backend/.env   # 如有
 docker compose up -d --build
 
 # Agent API: http://localhost:8000
-# 调试 UI:  http://localhost:8080
 ```
 
 ### 3. 本地开发运行 RAG Agent
@@ -190,15 +188,6 @@ cp .env.example .env        # 编辑 .env 填写配置
 
 # 启动
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-### 4. 启动调试 UI
-
-```bash
-cd commerce-rag-agent/web-debug
-npm install
-npm run dev
-# 访问 http://localhost:5173
 ```
 
 ## 项目结构
@@ -225,7 +214,6 @@ AgentShopping/
     │       ├── clients/            # Java 平台 HTTP 客户端
     │       ├── data/               # 商品数据、向量库
     │       └── main.py             # FastAPI 入口
-    ├── web-debug/                  # Vue 3 调试 UI
     └── docker-compose.yml
 ```
 

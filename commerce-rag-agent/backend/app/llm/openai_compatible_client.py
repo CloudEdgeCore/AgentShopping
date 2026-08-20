@@ -13,14 +13,26 @@ class OpenAICompatibleClient:
         api_key: str | None = None,
         base_url: str | None = None,
         model: str | None = None,
-        api_key_env: str = "DOUBAO_API_KEY",
-        base_url_env: str = "DOUBAO_BASE_URL",
-        model_env: str = "DOUBAO_MODEL",
+        api_key_env: str = "LLM_API_KEY",
+        base_url_env: str = "LLM_BASE_URL",
+        model_env: str = "LLM_MODEL",
         timeout: float | None = None,
     ) -> None:
-        self.api_key = api_key or os.getenv(api_key_env) or os.getenv("ARK_API_KEY", "")
-        self.base_url = (base_url or os.getenv(base_url_env) or "").rstrip("/")
-        self.model = model or os.getenv(model_env) or ""
+        # LLM_* 优先，兼容历史 DOUBAO_* / ARK_* 配置
+        self.api_key = (
+            api_key
+            or os.getenv(api_key_env)
+            or os.getenv("DOUBAO_API_KEY")
+            or os.getenv("ARK_API_KEY")
+            or ""
+        )
+        self.base_url = (
+            base_url
+            or os.getenv(base_url_env)
+            or os.getenv("DOUBAO_BASE_URL")
+            or ""
+        ).rstrip("/")
+        self.model = model or os.getenv(model_env) or os.getenv("DOUBAO_MODEL") or ""
         self.timeout = timeout or float(os.getenv("LLM_TIMEOUT_SECONDS", "60"))
         if not self.base_url:
             raise ValueError(f"Missing {base_url_env} for OpenAI-compatible LLM client")
@@ -98,12 +110,11 @@ class OpenAICompatibleClient:
         }
 
     def _headers(self) -> dict[str, str]:
-        if not self.api_key:
-            raise RuntimeError("DOUBAO_API_KEY or ARK_API_KEY is required")
-        return {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json",
-        }
+        headers = {"Content-Type": "application/json"}
+        # 内网/自建 OpenAI 兼容服务通常免鉴权：未配置 key 时不发送 Authorization 头
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+        return headers
 
 
 def _content_deltas_from_sse_line(line: str) -> Iterator[str]:

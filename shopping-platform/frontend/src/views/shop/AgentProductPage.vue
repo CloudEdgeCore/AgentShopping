@@ -115,14 +115,6 @@ async function loadProduct(productId) {
     const resp = await fetch(`/agent/products/${encodeURIComponent(productId)}`)
     if (!resp.ok) throw new Error(`${resp.status} ${resp.statusText}`)
     product.value = await resp.json()
-
-    // 加载 SKU
-    if (product.value.specs_json) {
-      try {
-        const specs = JSON.parse(product.value.specs_json)
-        // SKU 信息从 specs 中获取
-      } catch {}
-    }
   } catch (e) {
     error.value = `加载失败: ${e.message}`
   } finally {

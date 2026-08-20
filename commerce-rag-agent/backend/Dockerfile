@@ -13,14 +13,19 @@ RUN apt-get update \
 
 RUN python -m pip install --upgrade pip \
     && python -m pip install \
+        "bcrypt>=4.0.0" \
         "chromadb>=0.5.0" \
         "fastapi>=0.115.0" \
         "httpx>=0.27.0" \
         "langgraph>=0.2.0" \
         "pillow>=12.0.0" \
         "pydantic>=2.8.0" \
+        "PyJWT>=2.8.0" \
+        "pymysql>=1.1.0" \
         "python-dotenv>=1.0.1" \
         "python-multipart>=0.0.9" \
+        "redis>=5.0.0" \
+        "requests>=2.31.0" \
         "sqlalchemy>=2.0.0" \
         "uvicorn[standard]>=0.30.0"
 

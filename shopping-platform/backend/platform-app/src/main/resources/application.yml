@@ -50,7 +50,7 @@ platform:
   search:
     enabled: true
   security:
-    secret-key: "cloudedge-shopping-platform-jwt-secret-2026"
+    secret-key: ${PLATFORM_JWT_SECRET:cloudedge-shopping-platform-jwt-secret-2026}
     token-prefix: "Bearer "
     access-token-validity-seconds: 7200
     permit-all-urls:

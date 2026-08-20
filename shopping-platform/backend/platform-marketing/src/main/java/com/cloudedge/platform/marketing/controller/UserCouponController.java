@@ -1,6 +1,7 @@
 package com.cloudedge.platform.marketing.controller;
 
 import com.cloudedge.platform.marketing.model.dto.UserCouponPageQueryRequest;
+import com.cloudedge.platform.marketing.model.vo.AvailableCouponResponse;
 import com.cloudedge.platform.marketing.model.vo.PageResponse;
 import com.cloudedge.platform.marketing.model.vo.UserCouponResponse;
 import com.cloudedge.platform.marketing.service.UserCouponService;
@@ -12,6 +13,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/marketing/coupons")
@@ -28,5 +31,10 @@ public class UserCouponController {
     @GetMapping("/my")
     public Result<PageResponse<UserCouponResponse>> pageCurrentUserCoupons(@Valid UserCouponPageQueryRequest request) {
         return Result.success(userCouponService.pageCurrentUserCoupons(request));
+    }
+
+    @GetMapping("/available")
+    public Result<List<AvailableCouponResponse>> listAvailableCoupons() {
+        return Result.success(userCouponService.listAvailableCoupons());
     }
 }

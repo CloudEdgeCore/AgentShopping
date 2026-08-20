@@ -52,7 +52,8 @@ export const paymentApi = {
 export const marketingApi = {
   getFlashSaleDiscounts: (params) => http.get('/marketing/flash-sale/sku-discounts', { params }),
   claimCoupon: (templateId) => http.post(`/marketing/coupons/claim/${templateId}`),
-  getMyCoupons: (params) => http.get('/marketing/coupons/my', { params })
+  getMyCoupons: (params) => http.get('/marketing/coupons/my', { params }),
+  getAvailableCoupons: () => http.get('/marketing/coupons/available')
 }
 
 // ===== Admin APIs =====

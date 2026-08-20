@@ -13,6 +13,14 @@ services:
       CHINESE_CLIP_LOCAL_FILES_ONLY: "false"
       HF_HUB_OFFLINE: "0"
       TRANSFORMERS_OFFLINE: "0"
+      LLM_BASE_URL: http://101.245.87.173:8080/v1
+      LLM_MODEL: Qwen3.6-35B-A3B
+      TEXT_EMBEDDING_PROVIDER: qwen
+      TEXT_EMBEDDING_BASE_URL: http://1.95.152.83:8001
+      TEXT_EMBEDDING_MODEL: Qwen3-Embedding-8B
+      TEXT_EMBEDDING_DIMENSION: "4096"
+      RERANK_BASE_URL: http://1.95.214.83:8080/v1
+      RERANK_MODEL: bge-reranker-v2-m3
     ports:
       - "8000:8000"
     volumes:
@@ -24,15 +32,6 @@ services:
       timeout: 5s
       start_period: 30s
       retries: 3
-
-  web-debug:
-    build:
-      context: ./web-debug
-    depends_on:
-      backend:
-        condition: service_healthy
-    ports:
-      - "8080:80"
 
 volumes:
   backend-data:

@@ -105,6 +105,17 @@ def update_checked(cart_item_id: str, request: Request, db: Session = Depends(ge
     return {"code": "00000", "success": True}
 
 
+@router.delete("/items/clear")
+def clear_cart(request: Request, db: Session = Depends(get_db)) -> dict:
+    init_db()
+    user_id = _current_user_id(request)
+    if not user_id:
+        return JSONResponse(status_code=401, content={"code": "40100", "success": False, "message": "未登录"})
+    from app.services.cart_service import clear_cart_items
+    clear_cart_items(db, user_id=user_id)
+    return {"code": "00000", "success": True}
+
+
 @router.delete("/items/{cart_item_id}")
 def delete_item(cart_item_id: str, request: Request, db: Session = Depends(get_db)) -> dict:
     init_db()
@@ -116,14 +127,3 @@ def delete_item(cart_item_id: str, request: Request, db: Session = Depends(get_d
         return {"code": "00000", "success": True}
     except CommerceError as exc:
         return JSONResponse(status_code=400, content={"code": "40000", "success": False, "message": str(exc)})
-
-
-@router.delete("/items/clear")
-def clear_cart(request: Request, db: Session = Depends(get_db)) -> dict:
-    init_db()
-    user_id = _current_user_id(request)
-    if not user_id:
-        return JSONResponse(status_code=401, content={"code": "40100", "success": False, "message": "未登录"})
-    from app.services.cart_service import clear_cart_items
-    clear_cart_items(db, user_id=user_id)
-    return {"code": "00000", "success": True}

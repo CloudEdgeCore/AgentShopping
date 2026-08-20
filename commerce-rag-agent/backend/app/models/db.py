@@ -1,5 +1,6 @@
 import json
 import os
+import threading
 from collections.abc import Generator
 from pathlib import Path
 from urllib.parse import urlparse
@@ -22,21 +23,31 @@ if DATABASE_URL.startswith("sqlite"):
 engine = create_engine(DATABASE_URL, connect_args=_connect_args, pool_pre_ping=True)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
 
+_db_initialized = False
+_db_initialized_lock = threading.Lock()
+
 
 def init_db() -> None:
-    """创建所有表并执行增量迁移。"""
-    # SQLite 需要先创建目录
-    if DATABASE_URL.startswith("sqlite:///"):
-        db_path = Path(urlparse(DATABASE_URL).path.lstrip("/"))
-        db_path.parent.mkdir(parents=True, exist_ok=True)
+    """创建所有表并执行增量迁移（进程内只执行一次，线程安全）。"""
+    global _db_initialized
+    if _db_initialized:
+        return
+    with _db_initialized_lock:
+        if _db_initialized:
+            return
+        # SQLite 需要先创建目录
+        if DATABASE_URL.startswith("sqlite:///"):
+            db_path = Path(urlparse(DATABASE_URL).path.lstrip("/"))
+            db_path.parent.mkdir(parents=True, exist_ok=True)
 
-    Base.metadata.create_all(bind=engine)
-    _migrate_product_subcategory()
-    _migrate_order_checkout_columns()
-    _migrate_order_safety_columns()
-    _migrate_observability_columns()
-    _migrate_payment_callback_columns()
-    _migrate_product_experience_tables()
+        Base.metadata.create_all(bind=engine)
+        _migrate_product_subcategory()
+        _migrate_order_checkout_columns()
+        _migrate_order_safety_columns()
+        _migrate_observability_columns()
+        _migrate_payment_callback_columns()
+        _migrate_product_experience_tables()
+        _db_initialized = True
 
 
 def get_db() -> Generator[Session, None, None]:

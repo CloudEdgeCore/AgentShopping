@@ -177,7 +177,9 @@ public class InventoryCommandServiceImpl implements InventoryCommandService {
                 .eq(StockLockRecordDO::getSkuId, skuId)
                 .last("limit 1"));
 
-        if (existingRecord != null) {
+        // 幂等：同一订单同 SKU 已有"进行中"的锁定记录时跳过；
+        // 若历史记录已释放/已扣减（RELEASED/DEDUCTED），允许重新锁定并新增锁定记录
+        if (existingRecord != null && StockLockStatusEnum.LOCKED.getCode().equals(existingRecord.getStatus())) {
             return;
         }
 

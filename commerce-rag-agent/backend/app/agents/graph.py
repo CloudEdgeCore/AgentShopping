@@ -13,6 +13,7 @@ from app.agents.purchase import purchase_help_node
 from app.agents.shopping_guide import merge_memory, shopping_guide_node
 from app.agents.state import AgentState
 from app.agents.supervisor import build_supervisor_trace
+from app.llm.generation import _build_default_client
 from app.services.product_search_service import ProductSearchService
 from app.services.retrieval_orchestrator import RetrievalOrchestrator
 
@@ -106,7 +107,11 @@ def create_agent_graph(
     graph.add_node("purchase_help", purchase_help_node(db))
     graph.add_node("faq", faq_node(chroma_path=chroma_path))
     graph.add_node("clarification", clarification_node)
-    graph.add_node("chitchat", chitchat_node)
+    try:
+        chitchat_client = _build_default_client()
+    except Exception:
+        chitchat_client = None
+    graph.add_node("chitchat", chitchat_node(client=chitchat_client))
     graph.set_entry_point("intent_router")
     graph.add_conditional_edges(
         "intent_router",

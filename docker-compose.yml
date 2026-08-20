@@ -83,6 +83,7 @@ services:
       SPRING_DATA_REDIS_PORT: "6379"
       SPRING_DATA_REDIS_PASSWORD: "123456"
       SPRING_ELASTICSEARCH_URIS: http://elasticsearch:9200
+      PLATFORM_JWT_SECRET: "cloudedge-shopping-platform-jwt-secret-2026"
       PLATFORM_LOG_ENV: docker
       PLATFORM_LOG_PATH: /app/runtime-logs
     ports:
@@ -123,7 +124,16 @@ services:
       TRANSFORMERS_OFFLINE: "0"
       JAVA_PLATFORM_BASE_URL: http://java-backend:8080
       JWT_SECRET: "cloudedge-shopping-platform-jwt-secret-2026"
+      PAYMENT_WEBHOOK_SECRET: "agent-payment-webhook-secret-2026"
       REDIS_URL: redis://:123456@redis:6379/0
+      LLM_BASE_URL: http://101.245.87.173:8080/v1
+      LLM_MODEL: Qwen3.6-35B-A3B
+      TEXT_EMBEDDING_PROVIDER: qwen
+      TEXT_EMBEDDING_BASE_URL: http://1.95.152.83:8001
+      TEXT_EMBEDDING_MODEL: Qwen3-Embedding-8B
+      TEXT_EMBEDDING_DIMENSION: "4096"
+      RERANK_BASE_URL: http://1.95.214.83:8080/v1
+      RERANK_MODEL: bge-reranker-v2-m3
     ports:
       - "8000:8000"
     volumes:
@@ -155,21 +165,6 @@ services:
     depends_on:
       java-backend:
         condition: service_healthy
-      rag-agent:
-        condition: service_healthy
-    networks:
-      - shopping-net
-
-  # ────────────────── RAG 调试 UI（可选） ──────────────────
-
-  rag-debug:
-    build:
-      context: ./commerce-rag-agent/web-debug
-      dockerfile: Dockerfile
-    container_name: shopping-rag-debug
-    ports:
-      - "8081:80"
-    depends_on:
       rag-agent:
         condition: service_healthy
     networks:

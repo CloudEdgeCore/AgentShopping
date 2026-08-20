@@ -35,13 +35,13 @@
         :class="coupon.useStatus === 1 ? 'coupon-used' : coupon.useStatus === 2 ? 'coupon-expired' : ''"
       >
         <div class="coupon-left">
-          <div class="coupon-amount">
-            <span v-if="coupon.discountType === 1" class="amount-val">
+          <div v-if="coupon.couponType === 10" class="coupon-amount">
+            <span class="amount-val">
               <span class="amount-unit">¥</span>{{ formatAmount(coupon.discountAmount) }}
             </span>
-            <span v-else class="amount-val">
-              {{ formatDiscount(coupon.discountAmount) }}<span class="amount-unit">折</span>
-            </span>
+          </div>
+          <div v-else class="coupon-amount">
+            {{ formatDiscount(coupon.discountRate) }}<span class="amount-unit">折</span>
           </div>
           <div class="coupon-condition">
             {{ coupon.minOrderAmount > 0 ? `满¥${formatAmount(coupon.minOrderAmount)}可用` : '无门槛' }}
@@ -55,7 +55,7 @@
         <div class="coupon-right">
           <div class="coupon-name">{{ coupon.couponName }}</div>
           <div class="coupon-scope">
-            {{ coupon.scopeType === 0 ? '全场通用' : coupon.scopeType === 1 ? '指定分类' : '指定商品' }}
+            {{ coupon.scopeType === 10 ? '全场通用' : coupon.scopeType === 20 ? '指定分类' : '指定商品' }}
           </div>
           <div class="coupon-expire">
             有效至 {{ formatExpire(coupon.endTime) }}
@@ -92,13 +92,11 @@
               <div v-else-if="availableCoupons.length" class="claim-list">
                 <div v-for="c in availableCoupons" :key="c.id" class="claim-card">
                   <div class="claim-card-left">
-                    <div class="claim-amount">
-                      <span v-if="c.discountType === 1">
-                        <span class="claim-unit">¥</span>{{ formatAmount(c.discountAmount) }}
-                      </span>
-                      <span v-else>
-                        {{ formatDiscount(c.discountAmount) }}<span class="claim-unit">折</span>
-                      </span>
+                    <div v-if="c.couponType === 10" class="claim-amount">
+                      <span class="claim-unit">¥</span>{{ formatAmount(c.discountAmount) }}
+                    </div>
+                    <div v-else class="claim-amount">
+                      {{ formatDiscount(c.discountRate) }}<span class="claim-unit">折</span>
                     </div>
                     <div class="claim-condition">
                       {{ c.minOrderAmount > 0 ? `满¥${formatAmount(c.minOrderAmount)}` : '无门槛' }}
@@ -109,11 +107,11 @@
                     <div class="claim-expire">{{ formatExpire(c.endTime) }} 到期</div>
                     <button
                       class="btn btn-gold btn-xs"
-                      :disabled="claimedIds.has(c.id) || c.remainQuantity === 0"
+                      :disabled="claimedIds.has(c.id) || c.remainCount <= 0"
                       @click="claimCoupon(c)"
                     >
                       <span v-if="claimedIds.has(c.id)">已领取</span>
-                      <span v-else-if="c.remainQuantity === 0">已抢完</span>
+                      <span v-else-if="c.remainCount <= 0">已抢完</span>
                       <span v-else>立即领取</span>
                     </button>
                   </div>
@@ -160,11 +158,11 @@ const emptyText = computed(() => {
 })
 
 function formatAmount(val) {
-  return (val / 100).toFixed(2).replace(/\.00$/, '')
+  return Number(val || 0).toFixed(2).replace(/\.00$/, '')
 }
 
 function formatDiscount(val) {
-  return (val / 10).toFixed(1).replace(/\.0$/, '')
+  return Number(val || 0).toFixed(1).replace(/\.0$/, '')
 }
 
 function formatExpire(dateStr) {
@@ -172,11 +170,37 @@ function formatExpire(dateStr) {
   return dayjs(dateStr).format('YYYY.MM.DD')
 }
 
+// Java 平台用户券字段 → 组件字段
+function mapUserCoupon(c) {
+  return {
+    ...c,
+    couponType: c.couponType || 10,
+    // 10=未用, 15=锁定(视为未用), 20=已用, 30=过期
+    useStatus: c.status === 20 ? 1 : c.status === 30 ? 2 : 0,
+    minOrderAmount: c.thresholdAmount || 0,
+    discountRate: c.discountRate || 10,
+    endTime: c.validTo || '',
+    scopeType: c.scopeType || 10
+  }
+}
+
+// Java 平台可领券模板字段 → 组件字段
+function mapAvailableCoupon(c) {
+  return {
+    ...c,
+    couponType: c.couponType || 10,
+    minOrderAmount: c.thresholdAmount || 0,
+    discountRate: c.discountRate || 10,
+    endTime: c.receiveEndTime || c.validTo || '',
+    remainCount: c.remainCount ?? 0
+  }
+}
+
 async function loadCoupons() {
   loading.value = true
   try {
-    const res = await marketingApi.getMyCoupons({ page: 1, pageSize: 100 })
-    coupons.value = (res.data?.list || res.data || [])
+    const res = await marketingApi.getMyCoupons({ current: 1, size: 100 })
+    coupons.value = (res.data?.records || []).map(mapUserCoupon)
   } catch (e) {
     coupons.value = []
   } finally {
@@ -187,11 +211,10 @@ async function loadCoupons() {
 async function loadAvailable() {
   claimLoading.value = true
   try {
-    // Use the flash sale discounts endpoint or a coupons listing if available
-    // Based on API docs, we try to get coupon templates
-    const res = await marketingApi.getFlashSaleDiscounts({ page: 1, pageSize: 20 })
-    // This may return flash sale items; if the backend has coupon-template listing we'd use that
-    availableCoupons.value = res.data?.list || []
+    const res = await marketingApi.getAvailableCoupons()
+    const list = (res.data || []).map(mapAvailableCoupon)
+    availableCoupons.value = list
+    claimedIds.value = new Set(list.filter(c => (c.userClaimedCount || 0) > 0).map(c => c.id))
   } catch (e) {
     availableCoupons.value = []
   } finally {
@@ -203,6 +226,8 @@ async function claimCoupon(c) {
   try {
     await marketingApi.claimCoupon(c.id)
     claimedIds.value = new Set([...claimedIds.value, c.id])
+    c.remainCount = Math.max(0, (c.remainCount || 0) - 1)
+    c.userClaimedCount = (c.userClaimedCount || 0) + 1
     await loadCoupons()
   } catch (e) {
     alert(e.message || '领取失败')

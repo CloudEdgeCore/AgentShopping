@@ -1,11 +1,11 @@
 from typing import Any
 
 from fastapi import APIRouter, Depends
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.api.security import require_ops_api_key
 from app.models.db import get_db, init_db
-from app.evaluation.guide_quality_platform import run_guide_quality_evaluation
 from app.services.behavior_service import list_behavior_events
 from app.services.commerce_audit_service import list_commerce_audits
 from app.services.ops_metrics_service import get_ops_dashboard, get_ops_metrics
@@ -51,6 +51,14 @@ def read_behavior_events(
 @router.post("/evaluations/guide-quality")
 def run_guide_quality_eval_endpoint(db: Session = Depends(get_db)) -> dict[str, Any]:
     init_db()
+    # 惰性导入：guide_quality_platform 为可选评估模块，未安装时降级返回 503
+    try:
+        from app.evaluation.guide_quality_platform import run_guide_quality_evaluation
+    except ImportError:
+        return JSONResponse(
+            status_code=503,
+            content={"detail": "guide quality evaluation module is not installed"},
+        )
     result = run_guide_quality_evaluation(db)
     return {
         "metrics": result["metrics"],

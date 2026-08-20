@@ -143,7 +143,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { productApi } from '@/api'
+import { marketingApi, productApi } from '@/api'
 import ProductCard from '@/components/shop/ProductCard.vue'
 
 const categories = ref([])
@@ -175,15 +175,17 @@ function getCategoryDescription(category) {
 
 onMounted(async () => {
   try {
-    const [categoryRes, brandRes, productRes] = await Promise.all([
+    const [categoryRes, brandRes, productRes, flashRes] = await Promise.all([
       productApi.getCategories(),
       productApi.getBrands(),
-      productApi.getPage({ current: 1, size: 8 })
+      productApi.getPage({ current: 1, size: 8 }),
+      marketingApi.getFlashSaleDiscounts({}).catch(() => ({ data: [] }))
     ])
 
     categories.value = categoryRes.data || []
     brands.value = brandRes.data || []
     products.value = productRes.data?.records || []
+    hasFlashSale.value = (flashRes.data || []).length > 0
   } catch (error) {
     console.error(error)
   } finally {
